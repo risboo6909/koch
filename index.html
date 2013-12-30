@@ -1,6 +1,6 @@
 <html>
 <head>
-<title> Simple JS Koch snowflake implementation </title>
+<title> Simple JS Koch curve implementation </title>
 </head>
 <body>
 <canvas id='canvas', width='1920', height='1280'>
@@ -47,14 +47,12 @@
 
 	var rayLineIntersection = function(ax, ay, bx, by, adx, ady, bdx, bdy)
 	{
-		// ray-ray intersection test (stX = a, x0 = b)
+		// ray-line intersection test (stX = a, x0 = b)
 		var dx = bx - ax;
 		var dy = by - ay;
 		var det = bdx * ady - bdy * adx;
 		var u = (dy * bdx - dx * bdy) / det;
 		var v = (dy * adx - dx * ady) / det;
-
-		console.log(u, v, det);
 		return (v > 0 && det != 0)	
 	}
 
@@ -69,30 +67,26 @@
 		var k1 = res[0], k1_angle = res[1];
 
 		var one_third = (endX - stX) / 3;
+		var half_third = 0.5 * (endX - stX) / 3;
 		var L = getL(stX, stY, endX, endY);
 
-
-		// compute an endpoint
-		context.beginPath();
-		context.moveTo(stX, stY);
-		context.lineTo(stX + one_third, stY + one_third * (endY - stY) / (endX - stX));
-		context.strokeStyle = '#000000';
-		context.stroke();
-
-		context.beginPath();
-		context.moveTo(endX, endY);
-		context.lineTo(endX - one_third, endY - one_third * (endY - stY) / (endX - stX));
-		context.strokeStyle = '#000000';
-		context.stroke();
-
-
-/*
 		context.beginPath();
 		context.moveTo(stX, stY);
 		context.lineTo(endX, endY);
 		context.strokeStyle = '#000000';
+		context.lineWidth = 1;
 		context.stroke();
-*/
+
+		if (steps > 1)
+		{
+			context.beginPath();
+			context.moveTo(stX + one_third, stY + one_third * (endY - stY) / (endX - stX));
+			context.lineTo(stX + 2 * one_third, stY + 2 * one_third * (endY - stY) / (endX - stX));		
+			context.strokeStyle = 'white';
+			context.lineWidth = 3;
+			context.stroke();
+		}
+
 		var res = computeNormal(k0, k1_angle, L, one_third, stX, stY);
 
 		var x0 = res[0], 
@@ -115,6 +109,12 @@
 
 		}
 
+		if (steps == STEPS)
+		{
+			drawKochLine([endX, stY, 0, stY], stX, stY, stX + one_third, stY, steps - 1, context);
+			drawKochLine([endX, stY, 0, stY], stX + 2 * one_third, stY, endX, stY, steps - 1, context);
+		}
+
 		drawKochLine([newX, newY, x0, y0], x0 - 0.5 * one_third, k0 * (x0 - 0.5 * one_third) + b, x0 + newX, y0 + newY, steps - 1, context);
 		drawKochLine([newX, newY, x0, y0], x0 + 0.5 * one_third, k0 * (x0 + 0.5 * one_third) + b, x0 + newX, y0 + newY, steps - 1, context);
 
@@ -126,25 +126,22 @@
 		}
 
 		// draw a normal, debug only
-		/*
+		
 		context.beginPath(); 
 		context.moveTo(x0, y0);
 		//console.log(x0, y0, newX, newY);
 		context.lineTo(x0 + newX, y0 + newY);
 		context.strokeStyle = '#ff0000';
 		context.stroke();
-		*/	
+		
 	}
 
 	var canvas = document.getElementById('canvas');
 	var context = canvas.getContext('2d');
 
-	var stX = 10, stY = 650, endX = 1920, endY = 650, STEPS = 6;
+	var stX = 10, stY = 800, endX = 1920, endY = 800, STEPS = 7;
 
 	drawKochLine(NaN, stX, stY, endX, endY, STEPS, context);
-
-	//drawKochLine(NaN, stX, stY, stX + (endX - stX) / 3, endY, STEPS, context);
-	//drawKochLine(NaN, stX + 2 * (endX - stX) / 3, stY, endX, endY, STEPS, context);
 
 </script>
 </body>
