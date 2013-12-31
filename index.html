@@ -6,6 +6,9 @@
 <canvas id='canvas', width='1920', height='1280'>
 	HTML5 is not supported!
 </canvas>
+
+<script src='http://yandex.st/bootstrap/3.0.2/js/bootstrap.min.js'></script>
+
 <script>
 
 	var getNormalCoeff = function(k0, invert)
@@ -20,22 +23,14 @@
 		return [k1, k1_angle];
 	}
 
-	var computeNormal = function(k0, k1_angle, L, one_third, x0, y0)
+	var computeNormal = function(k, k1_angle, L, one_third, x, y)
 	{
 
-		var fromX = x0 + one_third + 0.5 * one_third;
-		var b = -k0 * x0 + y0;
-		var fromY = k0 * fromX + b;
-		
-		var toX = L * Math.cos(k1_angle);
-		var toY = L * Math.sin(k1_angle);
+		var b = -k * x + y;
+		var x0 = x + 1.5 * one_third;
+		var y0 = k * x0 + b;
 
-		return [fromX, fromY, toX, toY, b];
-	}
-
-	var getTangentCoeff = function(x0, y0, x1, y1)
-	{
-		return (y1 - y0) / (x1 - x0);
+		return [x0, y0, L * Math.cos(k1_angle), L * Math.sin(k1_angle), b];
 	}
 
 	var getL = function(x0, y0, x1, y1)
@@ -56,36 +51,35 @@
 		return (v > 0 && det != 0)	
 	}
 
-	var drawKochLine = function(old_n, stX, stY, endX, endY, steps, context)
+	var drawLine = function(context, fromX, fromY, toX, toY, color, width)
+	{
+		context.beginPath();
+		context.moveTo(fromX, fromY);
+		context.lineTo(toX, toY);
+		context.strokeStyle = color;
+		context.lineWidth = width;
+		context.stroke();
+	}
+
+	var drawKochSegment = function(old_n, stX, stY, endX, endY, steps, context)
 	{
 
-		if (steps <= 0) return;
+		if (steps <= 0) 
+			return;
 
-		var k0 = getTangentCoeff(stX, stY, endX, endY);
-		var res = getNormalCoeff(k0, false);
+		var one_third = (endX - stX) / 3, half_third = 0.5 * one_third;
 
-		var k1 = res[0], k1_angle = res[1];
-
-		var one_third = (endX - stX) / 3;
-		var half_third = 0.5 * (endX - stX) / 3;
 		var L = getL(stX, stY, endX, endY);
 
-		context.beginPath();
-		context.moveTo(stX, stY);
-		context.lineTo(endX, endY);
-		context.strokeStyle = '#000000';
-		context.lineWidth = 1;
-		context.stroke();
+		var k0 = (endY - stY) / (endX - stX);
 
+		var res = getNormalCoeff(k0, false);
+		var k1 = res[0], k1_angle = res[1];
+
+		drawLine(context, stX, stY, endX, endY, '#000000', 1);
+		
 		if (steps > 1)
-		{
-			context.beginPath();
-			context.moveTo(stX + one_third, stY + one_third * (endY - stY) / (endX - stX));
-			context.lineTo(stX + 2 * one_third, stY + 2 * one_third * (endY - stY) / (endX - stX));		
-			context.strokeStyle = 'white';
-			context.lineWidth = 3;
-			context.stroke();
-		}
+			drawLine(context, stX + one_third, stY + one_third * k0, stX + 2 * one_third, stY + 2 * one_third * k0, 'white', 3);			
 
 		var res = computeNormal(k0, k1_angle, L, one_third, stX, stY);
 
@@ -111,37 +105,30 @@
 
 		if (steps == STEPS)
 		{
-			drawKochLine([endX, stY, 0, stY], stX, stY, stX + one_third, stY, steps - 1, context);
-			drawKochLine([endX, stY, 0, stY], stX + 2 * one_third, stY, endX, stY, steps - 1, context);
+			var k = (endY - stY) / 3;
+			drawKochSegment([endX, stY, 0, stY], stX, stY, stX + one_third, stY + k, steps - 1, context);
+			drawKochSegment([endX, stY, 0, stY], stX + 2 * one_third, stY + 2 * k, endX, stY + 3 * k, steps - 1, context);
 		}
-
-		drawKochLine([newX, newY, x0, y0], x0 - 0.5 * one_third, k0 * (x0 - 0.5 * one_third) + b, x0 + newX, y0 + newY, steps - 1, context);
-		drawKochLine([newX, newY, x0, y0], x0 + 0.5 * one_third, k0 * (x0 + 0.5 * one_third) + b, x0 + newX, y0 + newY, steps - 1, context);
-
-		if (steps != STEPS)
+			else
 		{			
-			drawKochLine(old_n, x0 - 0.5 * one_third, k0 * (x0 - 0.5 * one_third) + b, x0 - 0.5 * one_third - one_third, k0 * (x0 - 0.5 * one_third - one_third) + b, steps - 1, context);
-
-			drawKochLine(old_n, x0 + 0.5 * one_third, k0 * (x0 + 0.5 * one_third) + b, x0 + 0.5 * one_third + one_third, k0 * (x0 + 0.5 * one_third + one_third) + b, steps - 1, context);
+			drawKochSegment(old_n, x0 - half_third, k0 * (x0 - half_third) + b, x0 - 1.5 * one_third, k0 * (x0 - 1.5 * one_third) + b, steps - 1, context);
+			drawKochSegment(old_n, x0 + half_third, k0 * (x0 + half_third) + b, x0 + 1.5 * one_third, k0 * (x0 + 1.5 * one_third) + b, steps - 1, context);
 		}
+
+		drawKochSegment([newX, newY, x0, y0], x0 - half_third, k0 * (x0 - half_third) + b, x0 + newX, y0 + newY, steps - 1, context);
+		drawKochSegment([newX, newY, x0, y0], x0 + half_third, k0 * (x0 + half_third) + b, x0 + newX, y0 + newY, steps - 1, context);
 
 		// draw a normal, debug only
-		
-		context.beginPath(); 
-		context.moveTo(x0, y0);
-		//console.log(x0, y0, newX, newY);
-		context.lineTo(x0 + newX, y0 + newY);
-		context.strokeStyle = '#ff0000';
-		context.stroke();
+		drawLine(context, x0, y0, x0 + newX, y0 + newY, '#FF0000', 1);
 		
 	}
 
 	var canvas = document.getElementById('canvas');
 	var context = canvas.getContext('2d');
 
-	var stX = 10, stY = 800, endX = 1920, endY = 800, STEPS = 7;
+	var STEPS = 6;
 
-	drawKochLine(NaN, stX, stY, endX, endY, STEPS, context);
+	drawKochSegment(NaN, 10, 800, 1920, 800, STEPS, context);
 
 </script>
 </body>
