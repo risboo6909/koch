@@ -11,18 +11,6 @@
 
 <script>
 
-	var getNormalCoeff = function(k0, invert)
-	{
-		var k1 = -1 / k0;
-		var k1_angle = Math.atan(k1);
-		if (invert)
-		{
-			k1_angle = k1_angle - Math.PI;
-			k1 = Math.tan(k1_angle);
-		}
-		return [k1, k1_angle];
-	}
-
 	var computeNormal = function(k, k1_angle, L, one_third, x, y)
 	{
 
@@ -30,19 +18,12 @@
 		var x0 = x + 1.5 * one_third;
 		var y0 = k * x0 + b;
 
-		return [x0, y0, L * Math.cos(k1_angle), L * Math.sin(k1_angle), b];
-	}
-
-	var getL = function(x0, y0, x1, y1)
-	{
-		var x_sq = (x1 - x0) * (x1 - x0);
-		var y_sq = (y1 - y0) * (y1 - y0);
-		return (Math.sqrt(x_sq + y_sq)) / 3;
+		return {'x0': x0, 'y0': y0, 'x1': L * Math.cos(k1_angle), 'y1': L * Math.sin(k1_angle), 'b': b};
 	}
 
 	var rayLineIntersection = function(ax, ay, bx, by, adx, ady, bdx, bdy)
 	{
-		// ray-line intersection test (stX = a, x0 = b)
+		// ray-line intersection test (x0 = a, x0 = b)
 		var dx = bx - ax;
 		var dy = by - ay;
 		var det = bdx * ady - bdy * adx;
@@ -51,7 +32,7 @@
 		return (v > 0 && det != 0)	
 	}
 
-	var drawLine = function(context, fromX, fromY, toX, toY, color, width)
+	var drawLine = function(fromX, fromY, toX, toY, color, width)
 	{
 		context.beginPath();
 		context.moveTo(fromX, fromY);
@@ -61,74 +42,61 @@
 		context.stroke();
 	}
 
-	var drawKochSegment = function(old_n, stX, stY, endX, endY, steps, context)
+	canvas = document.getElementById('canvas');
+	context = canvas.getContext('2d');
+
+	var drawKochSegment = function(prevNorm, x0, y0, x1, y1, steps)
 	{
 
 		if (steps <= 0) 
 			return;
 
-		var one_third = (endX - stX) / 3, half_third = 0.5 * one_third;
+		var L = Math.sqrt(Math.pow(x1 - x0, 2) + Math.pow(y1 - y0, 2)) / 3;
+		var one_third = (x1 - x0) / 3, two_thirds = 2 * one_third, half_third = 0.5 * one_third;
 
-		var L = getL(stX, stY, endX, endY);
+		var k0 = (y1 - y0) / (x1 - x0);
+		var k1_angle = Math.atan(-1 / k0);
 
-		var k0 = (endY - stY) / (endX - stX);
-
-		var res = getNormalCoeff(k0, false);
-		var k1 = res[0], k1_angle = res[1];
-
-		drawLine(context, stX, stY, endX, endY, '#000000', 1);
+		drawLine(x0, y0, x1, y1, '#000000', 1);
 		
-		if (steps > 1)
-			drawLine(context, stX + one_third, stY + one_third * k0, stX + 2 * one_third, stY + 2 * one_third * k0, 'white', 3);			
+		if (steps >	1)
+			drawLine(x0 + one_third, y0 + one_third * k0, x0 + two_thirds, y0 + two_thirds * k0, 'white', 3);			
 
-		var res = computeNormal(k0, k1_angle, L, one_third, stX, stY);
+		var r = computeNormal(k0, k1_angle, L, one_third, x0, y0);
 
-		var x0 = res[0], 
-			y0 = res[1], 
-			newX = res[2], 
-			newY = res[3], 
-			b = res[4];
+		if (prevNorm != NaN && rayLineIntersection(prevNorm.x0, prevNorm.y0, r.x0, r.y0, prevNorm.x1, prevNorm.y1, r.x1, r.y1))
+			r = computeNormal(k0, k1_angle - Math.PI, L, one_third, x0, y0);
 
-		if (old_n != NaN)
-		{
-			
-			if (rayLineIntersection(old_n[2], old_n[3], x0, y0, old_n[0], old_n[1], newX, newY))
-			{			
-				k1_angle = k1_angle - Math.PI;
-				k1 = Math.tan(k1_angle);
-			}
-			
-			res = computeNormal(k0, k1_angle, L, one_third, stX, stY);
-			x0 = res[0], y0 = res[1], newX = res[2], newY = res[3], b = res[4];
-
-		}
-
+		var t1 = k0 * (r.x0 - half_third) + r.b;
+		var t2 = k0 * (r.x0 + half_third) + r.b;
+		
+		var curNorm = {'x1': r.x1, 'y1': r.y1, 'x0': r.x0, 'y0': r.y0};
+		
 		if (steps == STEPS)
 		{
-			var k = (endY - stY) / 3;
-			drawKochSegment([endX, stY, 0, stY], stX, stY, stX + one_third, stY + k, steps - 1, context);
-			drawKochSegment([endX, stY, 0, stY], stX + 2 * one_third, stY + 2 * k, endX, stY + 3 * k, steps - 1, context);
+			var k = (y1 - y0) / 3;
+			drawKochSegment({'x1': x1, 'y0': y0, 'x0': x0, 'y1': y0 + k}, 
+									x0, y0, x0 + one_third, y0 + k, steps - 1);
+
+			drawKochSegment({'x1': x1, 'y0': y0 + 2 * k, 'x0': x0, 'y1': y0 + 3 * k}, 
+									x0 + two_thirds, y0 + 2 * k, x1, y0 + 3 * k, steps - 1);
 		}
-			else
-		{			
-			drawKochSegment(old_n, x0 - half_third, k0 * (x0 - half_third) + b, x0 - 1.5 * one_third, k0 * (x0 - 1.5 * one_third) + b, steps - 1, context);
-			drawKochSegment(old_n, x0 + half_third, k0 * (x0 + half_third) + b, x0 + 1.5 * one_third, k0 * (x0 + 1.5 * one_third) + b, steps - 1, context);
+		else
+		{
+			drawKochSegment(prevNorm, r.x0 - half_third, t1, r.x0 - 1.5 * one_third, t1 - k0 * one_third, steps - 1);
+			drawKochSegment(prevNorm, r.x0 + half_third, t2, r.x0 + 1.5 * one_third, t2 + k0 * one_third, steps - 1);
 		}
 
-		drawKochSegment([newX, newY, x0, y0], x0 - half_third, k0 * (x0 - half_third) + b, x0 + newX, y0 + newY, steps - 1, context);
-		drawKochSegment([newX, newY, x0, y0], x0 + half_third, k0 * (x0 + half_third) + b, x0 + newX, y0 + newY, steps - 1, context);
+		drawKochSegment(curNorm, r.x0 - half_third, t1, r.x0 + r.x1, r.y0 + r.y1, steps - 1);
+		drawKochSegment(curNorm, r.x0 + half_third, t2, r.x0 + r.x1, r.y0 + r.y1, steps - 1);
 
-		// draw a normal, debug only
-		drawLine(context, x0, y0, x0 + newX, y0 + newY, '#FF0000', 1);
-		
+		// draw a prevNormal, debug only
+		drawLine(r.x0, r.y0, r.x0 + r.x1, r.y0 + r.y1, '#FF0000', 1);
 	}
 
-	var canvas = document.getElementById('canvas');
-	var context = canvas.getContext('2d');
+	STEPS = 8;
 
-	var STEPS = 6;
-
-	drawKochSegment(NaN, 10, 800, 1920, 800, STEPS, context);
+	drawKochSegment(NaN, 0, 800, 1920, 800, STEPS);
 
 </script>
 </body>
