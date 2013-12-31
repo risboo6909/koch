@@ -1,15 +1,57 @@
 <html>
 <head>
 <title> Simple JS Koch curve implementation </title>
+<style>
+#canvas {
+    padding-left: 0;
+    padding-right: 0;
+    margin-left: auto;
+    margin-right: auto;
+    display: block;
+}
+</style>
 </head>
 <body>
-<canvas id='canvas', width='1920', height='1280'>
+
+<link rel="stylesheet" type="text/css" href="http://yandex.st/bootstrap/3.0.2/css/bootstrap.min.css" />
+<script src='http://yandex.st/jquery/2.0.3/jquery.min.js'></script>
+<script src='http://yandex.st/bootstrap/3.0.2/js/bootstrap.min.js'></script>
+
+Depth
+<div class="btn-group">
+  <button id='1' type="button" class="btn btn-default">1</button>
+  <button id='2' type="button" class="btn btn-default">2</button>
+  <button id='3' type="button" class="btn btn-default">3</button>
+  <button id='4' type="button" class="btn btn-default">4</button>
+  <button id='5' type="button" class="btn btn-default">5</button>
+  <button id='6' type="button" class="btn btn-default">6</button>
+  <button id='7' type="button" class="btn btn-default">7</button>
+  <button id='8' type="button" class="btn btn-default">8</button>
+  <button id='9' type="button" class="btn btn-default">9</button>
+</div>
+
+<canvas id='canvas', width='1024', height='768'>
 	HTML5 is not supported!
 </canvas>
 
-<script src='http://yandex.st/bootstrap/3.0.2/js/bootstrap.min.js'></script>
 
 <script>
+
+	canvas = document.getElementById('canvas');
+	context = canvas.getContext('2d');
+
+	for (var j = 1; j < 10; j++)
+	{
+		var wrap = function(j)
+		{
+			$('#' + j).on('click', function (e) {
+			     DEPTH = j;
+			     canvas.width = canvas.width;
+			     drawKochSegment(NaN, 0, 500, 1024, 500, DEPTH);
+			});
+		}
+		wrap(j);
+	}
 
 	var computeNormal = function(k, k1_angle, L, one_third, x, y)
 	{
@@ -42,13 +84,10 @@
 		context.stroke();
 	}
 
-	canvas = document.getElementById('canvas');
-	context = canvas.getContext('2d');
-
-	var drawKochSegment = function(prevNorm, x0, y0, x1, y1, steps)
+	var drawKochSegment = function(prevNorm, x0, y0, x1, y1, curDepth)
 	{
 
-		if (steps <= 0) 
+		if (curDepth <= 0) 
 			return;
 
 		var L = Math.sqrt(Math.pow(x1 - x0, 2) + Math.pow(y1 - y0, 2)) / 3;
@@ -59,7 +98,7 @@
 
 		drawLine(x0, y0, x1, y1, '#000000', 1);
 		
-		if (steps >	1)
+		if (curDepth >	1)
 			drawLine(x0 + one_third, y0 + one_third * k0, x0 + two_thirds, y0 + two_thirds * k0, 'white', 3);			
 
 		var r = computeNormal(k0, k1_angle, L, one_third, x0, y0);
@@ -72,31 +111,31 @@
 		
 		var curNorm = {'x1': r.x1, 'y1': r.y1, 'x0': r.x0, 'y0': r.y0};
 		
-		if (steps == STEPS)
+		if (curDepth == DEPTH)
 		{
 			var k = (y1 - y0) / 3;
 			drawKochSegment({'x1': x1, 'y0': y0, 'x0': x0, 'y1': y0 + k}, 
-									x0, y0, x0 + one_third, y0 + k, steps - 1);
+									x0, y0, x0 + one_third, y0 + k, curDepth - 1);
 
 			drawKochSegment({'x1': x1, 'y0': y0 + 2 * k, 'x0': x0, 'y1': y0 + 3 * k}, 
-									x0 + two_thirds, y0 + 2 * k, x1, y0 + 3 * k, steps - 1);
+									x0 + two_thirds, y0 + 2 * k, x1, y0 + 3 * k, curDepth - 1);
 		}
 		else
 		{
-			drawKochSegment(prevNorm, r.x0 - half_third, t1, r.x0 - 1.5 * one_third, t1 - k0 * one_third, steps - 1);
-			drawKochSegment(prevNorm, r.x0 + half_third, t2, r.x0 + 1.5 * one_third, t2 + k0 * one_third, steps - 1);
+			drawKochSegment(prevNorm, r.x0 - half_third, t1, r.x0 - 1.5 * one_third, t1 - k0 * one_third, curDepth - 1);
+			drawKochSegment(prevNorm, r.x0 + half_third, t2, r.x0 + 1.5 * one_third, t2 + k0 * one_third, curDepth - 1);
 		}
 
-		drawKochSegment(curNorm, r.x0 - half_third, t1, r.x0 + r.x1, r.y0 + r.y1, steps - 1);
-		drawKochSegment(curNorm, r.x0 + half_third, t2, r.x0 + r.x1, r.y0 + r.y1, steps - 1);
+		drawKochSegment(curNorm, r.x0 - half_third, t1, r.x0 + r.x1, r.y0 + r.y1, curDepth - 1);
+		drawKochSegment(curNorm, r.x0 + half_third, t2, r.x0 + r.x1, r.y0 + r.y1, curDepth - 1);
 
 		// draw a prevNormal, debug only
 		drawLine(r.x0, r.y0, r.x0 + r.x1, r.y0 + r.y1, '#FF0000', 1);
 	}
 
-	STEPS = 8;
+	DEPTH = 8;
 
-	drawKochSegment(NaN, 0, 800, 1920, 800, STEPS);
+	drawKochSegment(NaN, 0, 500, 1024, 500, DEPTH);
 
 </script>
 </body>
